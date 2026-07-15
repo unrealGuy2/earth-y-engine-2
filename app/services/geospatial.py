@@ -2,16 +2,34 @@ import ee
 import logging
 import requests
 import base64
+import os
+from google.oauth2 import service_account
 
 logger = logging.getLogger(__name__)
 
 def initialize_earth_engine():
-    """Initializes the Earth Engine API. Must be called when the server starts."""
+    """
+    Initializes Google Earth Engine securely.
+    Uses a Service Account in production (Render) and local credentials in development.
+    """
+    project_id = 'project-3a2b56f3-71b6-4f11-be4'
+    key_path = "/etc/secrets/google-credentials.json"
+
     try:
-        ee.Initialize(project='project-3a2b56f3-71b6-4f11-be4') 
+        if os.path.exists(key_path):
+            # Cloud Deployment Route: Uses the Service Account JSON
+            credentials = service_account.Credentials.from_service_account_file(key_path)
+            scoped_credentials = credentials.with_scopes(['https://www.googleapis.com/auth/earthengine'])
+            ee.Initialize(credentials=scoped_credentials, project=project_id)
+            logger.info("Earth Engine Initialized Securely via Cloud Service Account.")
+        else:
+            # Local Development Route: Uses your hidden laptop token
+            ee.Initialize(project=project_id)
+            logger.info("Earth Engine Initialized via Local Credentials.")
+            
     except Exception as e:
-        logger.error(f"Failed to initialize Earth Engine: {e}")
-        raise
+        logger.error(f"CRITICAL: Failed to initialize Earth Engine: {e}")
+        raise e
 
 def get_terrain_intelligence(lon: float, lat: float) -> dict:
     """Extracts elevation and slope for a specific coordinate using SRTM DEM."""
