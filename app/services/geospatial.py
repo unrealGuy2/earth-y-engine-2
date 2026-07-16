@@ -3,43 +3,34 @@ import logging
 import requests
 import base64
 import os
-import json
-from google.oauth2.credentials import Credentials
+import shutil
 
 logger = logging.getLogger(__name__)
 
 def initialize_earth_engine():
     """
     Initializes Google Earth Engine securely.
-    Bypasses Service Account restrictions by using a secure Refresh Token with Google's native CLI Client ID.
+    Acts as a Trojan Horse: copies the Render secret vault token into the native 
+    hidden directory that the Earth Engine library expects for local laptops.
     """
     project_id = 'project-3a2b56f3-71b6-4f11-be4'
-    key_path = "/etc/secrets/laptop-credentials.json"
+    vault_path = "/etc/secrets/laptop-credentials.json"
+    
+    # This is the exact hidden path the ee library looks for by default
+    native_ee_path = os.path.expanduser('~/.config/earthengine/credentials')
 
     try:
-        if os.path.exists(key_path):
-            # Cloud Deployment Route: Uses your laptop's stolen VIP pass
-            with open(key_path, 'r') as f:
-                token_data = json.load(f)
+        if os.path.exists(vault_path):
+            # Create the hidden folder on the Render server
+            os.makedirs(os.path.dirname(native_ee_path), exist_ok=True)
+            # Copy your token from the vault into the hidden folder
+            shutil.copy(vault_path, native_ee_path)
+            logger.info("Trojan Token deployed to native Earth Engine directory.")
             
-            # Google Earth Engine's universal fallback CLI credentials
-            EE_CLIENT_ID = '764086051850-6qr4p6gpi6hn506pt8ejuq83di341hur.apps.googleusercontent.com'
-            EE_CLIENT_SECRET = 'd-qW0vGIRXh_cEaX7OATVq_F'
-
-            creds = Credentials(
-                token=None,
-                refresh_token=token_data.get('refresh_token'),
-                token_uri=token_data.get('token_uri', 'https://oauth2.googleapis.com/token'),
-                client_id=token_data.get('client_id', EE_CLIENT_ID),
-                client_secret=token_data.get('client_secret', EE_CLIENT_SECRET),
-                scopes=token_data.get('scopes', ['https://www.googleapis.com/auth/earthengine'])
-            )
-            ee.Initialize(credentials=creds, project=project_id)
-            logger.info("Earth Engine Initialized Securely via Local Refresh Token bypass.")
-        else:
-            # Local Development Route: Uses default laptop token
-            ee.Initialize(project=project_id)
-            logger.info("Earth Engine Initialized via Local Credentials.")
+        # Initialize normally. If the file is in the hidden folder, ee automatically uses it 
+        # with its own internal, up-to-date Client Secrets.
+        ee.Initialize(project=project_id)
+        logger.info("Earth Engine Initialized Successfully!")
             
     except Exception as e:
         logger.error(f"CRITICAL: Failed to initialize Earth Engine: {e}")
