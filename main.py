@@ -16,10 +16,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Earth-Y Engine API", lifespan=lifespan)
 
-# CORS configuration
+# =====================================================================
+# CORS configuration (The Bridge)
+# =====================================================================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",                     # Local development
+        "https://earth-y-final-version.vercel.app"   # Live Vercel frontend
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
